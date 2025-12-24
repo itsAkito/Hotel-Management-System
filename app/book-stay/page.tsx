@@ -170,7 +170,7 @@ export default function BookStayPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-950 transition-colors">
+    <div className="min-h-screen bg-slate-800 dark:bg-slate-950 transition-colors">
       <Container>
         {/* Header */}
         <div className="py-8 border-b border-gray-200 dark:border-slate-800">
@@ -288,10 +288,10 @@ export default function BookStayPage() {
           <div className="grid grid-cols-1 gap-6">
             {filteredHotels.map((hotel) => (
               <Card key={hotel.id} className="overflow-hidden hover:shadow-lg transition-shadow">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 p-6">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 p-6 bg-slate-800 dark:bg-slate-900 ">
                   {/* Hotel Image */}
                   <div className="md:col-span-1">
-                    <div className="relative h-48 md:h-64 w-full rounded-lg overflow-hidden bg-gray-200 dark:bg-slate-700">
+                    <div className="relative h-58 md:h-64 w-full rounded-lg overflow-hidden bg-gray-200 dark:bg-slate-700">
                       {hotel.image ? (
                         <Image
                           src={hotel.image}
@@ -380,7 +380,7 @@ export default function BookStayPage() {
                               <Button
                                 onClick={() => handleBookRoom(hotel, room)}
                                 disabled={!checkInDate || !checkOutDate}
-                                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white disabled:bg-gray-300 disabled:cursor-not-allowed"
+                                className="w-full bg-emerald-600 hover:bg-emerald-700 text-slate-700 disabled:bg-gray-100 disabled:cursor-not-allowed"
                               >
                                 <Check className="h-4 w-4 mr-2" />
                                 Book Room

@@ -1,6 +1,6 @@
 # 🏨 Hotel Management System - Complete Documentation
 
-A full-featured hotel management and booking system built with **Next.js 16**, **Prisma ORM**, **PostgreSQL (Neon)**, **Clerk Authentication**, and **Stripe Payments**.
+A full-featured hotel management and booking system built with **Next.js 16**, **Prisma ORM**, **PostgreSQL (Neon)**, **Clerk Authentication**, and **Razorpay Payments**.
 
 ---
 
@@ -14,7 +14,7 @@ A full-featured hotel management and booking system built with **Next.js 16**, *
 6. [API Routes Documentation](#api-routes-documentation)
 7. [Database Schema](#database-schema)
 8. [Authentication (Clerk)](#authentication-clerk)
-9. [Payment Integration (Stripe)](#payment-integration-stripe)
+9. [Payment Integration (Razorpay)](#payment-integration-razorpay)
 10. [Components Guide](#components-guide)
 11. [State Management](#state-management)
 12. [Environment Configuration](#environment-configuration)
@@ -29,7 +29,7 @@ A full-featured hotel management and booking system built with **Next.js 16**, *
 - Node.js 18+ and npm/yarn
 - PostgreSQL database (Neon recommended)
 - Clerk account (https://clerk.com)
-- Stripe account (https://stripe.com)
+- Razorpay account (https://razorpay.com)
 
 ### Installation
 
@@ -80,7 +80,7 @@ npm run seed
 | **Backend** | Next.js API Routes |
 | **Database** | PostgreSQL (Neon) + Prisma ORM |
 | **Authentication** | Clerk |
-| **Payments** | Stripe |
+| **Payments** | Razorpay |
 | **UI Components** | Shadcn UI + Tailwind CSS |
 | **State Management** | Zustand |
 | **Form Management** | React Hook Form + Zod validation |
@@ -128,8 +128,8 @@ PostgreSQL Database
 - ✅ Hotel owner view of all bookings for their properties
 
 ### 4. **Payment Processing**
-- ✅ Stripe payment integration
-- ✅ Payment intent creation and management
+- ✅ Razorpay payment integration
+- ✅ Razorpay order creation and management
 - ✅ Webhook handling for payment events
 - ✅ Refund processing
 - ✅ Payment status tracking
@@ -205,15 +205,15 @@ npx prisma studio
    - Sign-in URL: `http://localhost:3000/sign-in`
    - Sign-up URL: `http://localhost:3000/sign-up`
 
-### Step 5: Setup Stripe
+### Step 5: Setup Razorpay
 
-1. Go to [Stripe Dashboard](https://dashboard.stripe.com)
-2. Get your API keys from Developers → API Keys
+1. Go to [Razorpay Dashboard](https://dashboard.razorpay.com)
+2. Get your API keys from Settings → API Keys
 3. Copy keys to `.env.local`
 4. Setup webhooks:
-   - Go to Developers → Webhooks
+   - Go to Settings → Webhooks
    - Add endpoint: `https://yourdomain.com/api/webhooks/stripe`
-   - Select events: `payment_intent.succeeded`, `payment_intent.payment_failed`, `charge.refunded`
+   - Select events: `payment.authorized`, `payment.failed`, `payment.captured`, `refund.created`
 
 ### Step 6: Start Development
 
@@ -545,68 +545,72 @@ export async function POST(request: Request) {
 
 ---
 
-## 💳 Payment Integration (Stripe)
+## 💳 Payment Integration (Razorpay)
 
 ### Setup Steps
 
-#### 1. Get Stripe Keys
+#### 1. Get Razorpay Keys
 
-1. Go to [stripe.com/dashboard](https://dashboard.stripe.com)
-2. Navigate to **Developers → API Keys**
+1. Go to [Razorpay Dashboard](https://dashboard.razorpay.com)
+2. Navigate to **Settings → API Keys**
 3. Copy:
-   - **Publishable Key** (starts with `pk_`)
-   - **Secret Key** (starts with `sk_`)
+   - **Key ID** (public key for frontend)
+   - **Key Secret** (private key for backend)
 
 #### 2. Setup Webhooks
 
-1. Go to **Developers → Webhooks**
-2. Click **Add endpoint**
-3. URL: `https://yourdomain.com/api/webhooks/stripe`
+1. Go to **Settings → Webhooks**
+2. Click **Add New Webhook Endpoint**
+3. URL: `https://yourdomain.com/api/webhooks/stripe` (webhook handler at this endpoint)
 4. Select events:
-   - `payment_intent.succeeded`
-   - `payment_intent.payment_failed`
-   - `charge.refunded`
-5. Copy **Signing Secret** (starts with `whsec_`)
+   - `payment.authorized`
+   - `payment.failed`
+   - `payment.captured`
+   - `refund.created`
+5. Copy **Webhook Secret**
 
 #### 3. Configure Environment Variables
 
 ```env
-NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_xxxxx
-STRIPE_SECRET_KEY=sk_test_xxxxx
-STRIPE_WEBHOOK_SECRET=whsec_xxxxx
+NEXT_PUBLIC_RAZORPAY_KEY_ID=rzp_test_xxxxx
+RAZORPAY_KEY_SECRET=sk_test_xxxxx
+RAZORPAY_WEBHOOK_SECRET=webhook_secret_xxxxx
 ```
 
-#### 4. Local Testing with Stripe CLI
+#### 4. Local Testing with Razorpay
 
 ```bash
-# Install Stripe CLI
-# https://stripe.com/docs/stripe-cli
+# Use Razorpay Test Credentials:
+# Key ID: rzp_test_xxxxxxxxxxxxxxxx
+# Key Secret: (available in dashboard)
 
-# Login to Stripe
-stripe login
+# Razorpay will automatically handle test/live mode
+# based on your credentials
 
-# Forward webhooks to local endpoint
-stripe listen --forward-to localhost:3000/api/webhooks/stripe
-
-# Trigger test events
-stripe trigger payment_intent.succeeded
+# Test payment details:
+# Card: 4111 1111 1111 1111
+# CVV: Any 3 digits
+# Expiry: Any future date
 ```
 
 ### Payment Flow
 
 1. User selects booking dates and room
-2. Frontend creates Stripe payment element
-3. User enters payment information
-4. Frontend calls `POST /api/bookings` with payment intent
-5. Backend verifies payment with Stripe
-6. Booking is created if payment succeeds
-7. Webhook handler updates payment status
+2. Frontend creates a booking and Razorpay order
+3. Razorpay payment modal opens
+4. User enters payment information
+5. Frontend receives payment response
+6. Backend verifies signature with Razorpay keys
+7. Booking is confirmed if payment succeeds
+8. Webhook handler updates payment status in real-time
 
 ### Available Payment Methods
 
 - Credit/Debit Cards (Visa, Mastercard, American Express)
-- Digital Wallets (Apple Pay, Google Pay)
-- Bank Transfers (ACH, SEPA)
+- Net Banking (All major Indian banks)
+- Digital Wallets (Apple Pay, Google Pay, PhonePe, Paytm)
+- UPI
+- EMI options available
 
 ---
 
@@ -705,10 +709,10 @@ NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_xxxxx
 CLERK_SECRET_KEY=sk_test_xxxxx
 CLERK_WEBHOOK_SECRET=whsec_xxxxx
 
-# STRIPE PAYMENT
-NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_xxxxx
-STRIPE_SECRET_KEY=sk_test_xxxxx
-STRIPE_WEBHOOK_SECRET=whsec_xxxxx
+# RAZORPAY PAYMENT
+NEXT_PUBLIC_RAZORPAY_KEY_ID=rzp_test_xxxxx
+RAZORPAY_KEY_SECRET=sk_test_xxxxx
+RAZORPAY_WEBHOOK_SECRET=webhook_secret_xxxxx
 
 # FILE UPLOADS (UploadThing)
 UPLOADTHING_TOKEN=zt_xxxxx
