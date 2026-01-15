@@ -1,57 +1,21 @@
 import { auth } from "@clerk/nextjs/server";
 import prismadb from "@/lib/prismadb";
 import { NextResponse } from "next/server";
-import crypto from "crypto";
+import Stripe from "stripe";
 
-// Helper function to create Razorpay order
-async function createRazorpayOrder(amount: number, currency: string, bookingId: string) {
-  try {
-    const options = {
-      method: "POST",
-      url: "https://api.razorpay.com/v1/orders",
-      auth: {
-        username: process.env.RAZORPAY_KEY_ID || "",
-        password: process.env.RAZORPAY_KEY_SECRET || "",
-      },
-      headers: {
-        "content-type": "application/json",
-      },
-      data: {
-        amount: Math.round(amount * 100), // Amount in smallest currency unit (paise for INR)
-        currency: currency.toUpperCase(),
-        receipt: bookingId,
-        notes: {
-          bookingId,
-        },
-      },
-    };
-
-    const response = await fetch(options.url, {
-      method: options.method,
-      headers: {
-        ...options.headers,
-        "Authorization": `Basic ${Buffer.from(`${options.auth.username}:${options.auth.password}`).toString("base64")}`,
-      },
-      body: JSON.stringify(options.data),
-    });
-
-    if (!response.ok) {
-      throw new Error("Failed to create Razorpay order");
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error("Razorpay order creation error:", error);
-    throw error;
-  }
-}
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", {
+  apiVersion: "2024-11-20",
+});
 
 export async function POST(req: Request) {
   try {
     const { userId } = await auth();
 
     if (!userId) {
-      return new NextResponse("Unauthorized", { status: 401 });
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
     }
 
     const body = await req.json();
@@ -69,7 +33,10 @@ export async function POST(req: Request) {
 
     // Validate required fields
     if (!userName || !roomId || !hotelId || !checkIn || !checkOut || !currency || !totalPrice) {
-      return new NextResponse("Missing required fields", { status: 400 });
+      return NextResponse.json(
+        { error: "Missing required fields" },
+        { status: 400 }
+      );
     }
 
     // Verify room exists
@@ -79,7 +46,10 @@ export async function POST(req: Request) {
     });
 
     if (!room) {
-      return new NextResponse("Room not found", { status: 404 });
+      return NextResponse.json(
+        { error: "Room not found" },
+        { status: 404 }
+      );
     }
 
     // Verify hotel exists and get owner ID
@@ -88,8 +58,29 @@ export async function POST(req: Request) {
     });
 
     if (!hotel) {
-      return new NextResponse("Hotel not found", { status: 404 });
+      return NextResponse.json(
+        { error: "Hotel not found" },
+        { status: 404 }
+      );
     }
+
+    // Create Stripe payment intent
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: Math.round(totalPrice * 100), // Amount in cents
+      currency: currency.toLowerCase(),
+      metadata: {
+        roomId: roomId.toString(),
+        hotelId: hotelId.toString(),
+        userId: userId,
+        hotelOwnerId: hotel.userId,
+        checkIn: checkIn,
+        checkOut: checkOut,
+      },
+      description: `Booking for ${room.title} at ${hotel.title}`,
+      automatic_payment_methods: {
+        enabled: true,
+      },
+    });
 
     // Create booking
     const booking = await prismadb.booking.create({
@@ -104,7 +95,7 @@ export async function POST(req: Request) {
         breakfastIncluded: breakfastIncluded || false,
         currency: currency.toUpperCase(),
         totalPrice: parseInt(totalPrice),
-        paymentIntent: "", // Will be filled with Razorpay order ID
+        paymentIntent: paymentIntent.id,
         status: "pending",
         paymentStatus: false,
       },
@@ -114,29 +105,19 @@ export async function POST(req: Request) {
       },
     });
 
-    // Create Razorpay order
-    const razorpayOrder = await createRazorpayOrder(totalPrice, currency, booking.id);
-
-    // Update booking with Razorpay order ID
-    const updatedBooking = await prismadb.booking.update({
-      where: { id: booking.id },
-      data: { paymentIntent: razorpayOrder.id },
-      include: {
-        hotel: true,
-        room: true,
-      },
-    });
-
     return NextResponse.json(
       {
-        booking: updatedBooking,
-        razorpayOrderId: razorpayOrder.id,
+        booking,
+        clientSecret: paymentIntent.client_secret,
       },
       { status: 201 }
     );
   } catch (error) {
     console.log("[BOOKINGS_POST]", error);
-    return new NextResponse("Internal error", { status: 500 });
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
   }
 }
 
@@ -145,7 +126,10 @@ export async function GET(req: Request) {
     const { userId } = await auth();
 
     if (!userId) {
-      return new NextResponse("Unauthorized", { status: 401 });
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
     }
 
     // Get all bookings for the authenticated user
@@ -165,6 +149,9 @@ export async function GET(req: Request) {
     return NextResponse.json(bookings);
   } catch (error) {
     console.log("[BOOKINGS_GET]", error);
-    return new NextResponse("Internal error", { status: 500 });
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
   }
 }

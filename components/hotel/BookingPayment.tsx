@@ -4,14 +4,12 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@clerk/nextjs';
 import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Loader } from 'lucide-react';
-
-declare global {
-  interface Window {
-    Razorpay: any;
-  }
-}
+import {
+  EmbeddedCheckoutProvider,
+  EmbeddedCheckout,
+} from '@stripe/react-stripe-js';
+import { loadStripe } from '@stripe/stripe-js';
 
 interface BookingPaymentProps {
   roomId: number;
@@ -25,6 +23,10 @@ interface BookingPaymentProps {
   hotelTitle: string;
   userName?: string;
 }
+
+const stripePromise = loadStripe(
+  process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || ''
+);
 
 export default function BookingPayment({
   roomId,
@@ -42,28 +44,15 @@ export default function BookingPayment({
   const { user } = useUser();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [bookingId, setBookingId] = useState<string | null>(null);
-  const [orderCreated, setOrderCreated] = useState(false);
 
   const nightsDiff = Math.ceil(
     (checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24)
   );
 
-  // Load Razorpay script
   useEffect(() => {
-    const script = document.createElement('script');
-    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-    script.async = true;
-    document.body.appendChild(script);
-
-    return () => {
-      document.body.removeChild(script);
-    };
-  }, []);
-
-  // Initialize booking and create Razorpay order
-  useEffect(() => {
-    if (!user || orderCreated) return;
+    if (!user) return;
 
     const initializePayment = async () => {
       try {
@@ -90,8 +79,8 @@ export default function BookingPayment({
         }
 
         const data = await response.json();
+        setClientSecret(data.clientSecret);
         setBookingId(data.booking.id);
-        setOrderCreated(true);
       } catch (err) {
         console.error('Payment initialization error:', err);
         setError(err instanceof Error ? err.message : 'Payment initialization failed');
@@ -101,80 +90,9 @@ export default function BookingPayment({
     };
 
     initializePayment();
-  }, [user, roomId, hotelId, checkIn, checkOut, breakfastIncluded, currency, totalPrice, userName, orderCreated]);
+  }, [user, roomId, hotelId, checkIn, checkOut, breakfastIncluded, currency, totalPrice, userName]);
 
-  const handlePayment = async () => {
-    if (!bookingId) return;
-
-    try {
-      setLoading(true);
-      setError(null);
-
-      // Fetch Razorpay order from backend
-      const orderResponse = await fetch(`/api/bookings/${bookingId}/razorpay-order`, {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
-      });
-
-      if (!orderResponse.ok) {
-        throw new Error('Failed to get payment order');
-      }
-
-      const orderData = await orderResponse.json();
-
-      const options = {
-        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-        amount: Math.round(totalPrice * 100), // Amount in paise
-        currency: currency.toUpperCase(),
-        name: hotelTitle,
-        description: `Booking for ${roomTitle}`,
-        order_id: orderData.razorpayOrderId,
-        handler: async (response: any) => {
-          try {
-            // Verify payment on backend
-            const verifyResponse = await fetch(`/api/bookings/${bookingId}/verify-payment`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature,
-              }),
-            });
-
-            if (!verifyResponse.ok) {
-              throw new Error('Payment verification failed');
-            }
-
-            // Payment successful, redirect to confirmation
-            router.push(`/booking-confirmation?bookingId=${bookingId}&hotelId=${hotelId}&roomId=${roomId}`);
-          } catch (err) {
-            setError(err instanceof Error ? err.message : 'Payment verification failed');
-          }
-        },
-        prefill: {
-          name: userName || user?.fullName || 'Guest',
-          email: user?.primaryEmailAddress?.emailAddress || '',
-          contact: user?.phoneNumbers?.[0]?.phoneNumber || '',
-        },
-        theme: {
-          color: '#3399cc',
-        },
-      };
-
-      if (window.Razorpay) {
-        const razorpay = new window.Razorpay(options);
-        razorpay.open();
-      }
-    } catch (err) {
-      console.error('Payment error:', err);
-      setError(err instanceof Error ? err.message : 'Payment processing failed');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (loading && !orderCreated) {
+  if (loading || !clientSecret) {
     return (
       <div className="flex items-center justify-center min-h-96">
         <Loader className="animate-spin h-8 w-8" />
@@ -232,18 +150,16 @@ export default function BookingPayment({
       )}
 
       <Card className="p-6">
-        <Button
-          onClick={handlePayment}
-          disabled={loading || !bookingId}
-          className="w-full py-6 text-lg font-semibold"
-        >
-          {loading ? 'Processing...' : 'Proceed to Payment'}
-        </Button>
+        {clientSecret && (
+          <EmbeddedCheckoutProvider stripe={stripePromise} options={{ clientSecret }}>
+            <EmbeddedCheckout />
+          </EmbeddedCheckoutProvider>
+        )}
       </Card>
 
       <div className="text-sm text-gray-600 text-center">
         <p>Your booking ID: {bookingId}</p>
-        <p>Secure payment powered by Razorpay</p>
+        <p>Secure payment powered by Stripe</p>
       </div>
     </div>
   );

@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ClerkProvider } from "@clerk/nextjs";
 import NavBar from "@/components/layout/Navbar";
+import Footer from "@/components/layout/Footer";
 import { ThemeProvider } from "@/components/theme-provider";
 import HotelToast from "@/components/HotelToast";
 const geistSans = Geist({
@@ -45,6 +46,7 @@ export default function RootLayout({
               <section className="flex-grow">
                 {children}
               </section>
+              <Footer />
             </main>
           </ThemeProvider>
         </ClerkProvider>

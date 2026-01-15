@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { MapPin, Star, Wifi, Utensils, Waves } from "lucide-react";
 import Container from "./Container";
-import { Button } from "@/components/ui/button";
 
 interface Hotel {
   id: string;
@@ -169,30 +169,9 @@ export default function FeaturedSection() {
                         ${Math.ceil(minPrice / 100)}
                       </p>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        type="button"
-                        size="sm"
-                        className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          router.push(`/book-stay?hotelId=${hotel.id}`);
-                        }}
-                      >
-                        Book Now
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        className="bg-blue-600 hover:bg-blue-700 text-white"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          router.push(`/hotel/${hotel.id}`);
-                        }}
-                      >
-                        View
-                      </Button>
-                    </div>
+                    <button className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors shadow-md">
+                      View
+                    </button>
                   </div>
                 </div>
               </div>

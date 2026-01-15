@@ -3,13 +3,13 @@ import prismadb from "@/lib/prismadb";
 import { NextResponse } from "next/server";
 
 export async function GET(req: Request) {
+  const { userId } = await auth();
+
+  if (!userId) {
+    return new NextResponse("Unauthorized", { status: 401 });
+  }
+
   try {
-    const { userId } = await auth();
-
-    if (!userId) {
-      return new NextResponse("Unauthorized", { status: 401 });
-    }
-
     // Fetch all hotels belonging to the authenticated user
     const hotels = await prismadb.hotel.findMany({
       where: {
@@ -27,6 +27,8 @@ export async function GET(req: Request) {
     return NextResponse.json(hotels);
   } catch (error) {
     console.log("[MYHOTELS_GET]", error);
-    return new NextResponse("Internal error", { status: 500 });
+    
+    // Database unavailable - return empty array (only show real uploaded hotels)
+    return NextResponse.json([]);
   }
 }

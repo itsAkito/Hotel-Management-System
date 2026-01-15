@@ -4,12 +4,34 @@ import { useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import Container from "@/components/Container";
 import { Button } from "@/components/ui/button";
-import FeaturedSection from "@/components/FeaturedSection";
 import Image from "next/image";
+import { useEffect, useState } from "react";
+import HotelCard from "@/components/hotel/HotelCard";
 
 export default function Home() {
   const { user, isLoaded } = useUser();
   const router = useRouter();
+  const [hotels, setHotels] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch hotels from API
+  useEffect(() => {
+    const fetchHotels = async () => {
+      try {
+        const response = await fetch('/api/addhotel');
+        if (response.ok) {
+          const data = await response.json();
+          setHotels(data);
+        }
+      } catch (error) {
+        console.error('Error fetching hotels:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchHotels();
+  }, []);
 
   return (
     <div className="min-h-screen bg-white dark:bg-slate-950 transition-colors">
@@ -42,6 +64,9 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Featured Hotels Carousel - Visible to everyone */}
+      {/* Carousel removed */}
+
       {/* Quick Actions */}
       {isLoaded && user && (
         <section className="py-8 bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800">
@@ -70,53 +95,74 @@ export default function Home() {
         </section>
       )}
 
-      {/* Featured Hotels Section */}
-      <FeaturedSection />
-
-      {/* Features Section */}
+      {/* Featured Hotels Section - Shows different content based on login status */}
       <section className="py-16 bg-white dark:bg-slate-900 border-t border-gray-200 dark:border-slate-800">
         <Container>
-          <h2 className="text-3xl font-bold text-center text-gray-900 dark:text-white mb-12">
-            Why Choose Us?
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="text-center">
-              <div className="text-5xl mb-4">🏆</div>
-              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
-                Best Hotels
-              </h3>
-              <p className="text-gray-600 dark:text-gray-400">
-                Carefully selected hotels with great ratings and reviews
+          {/* Show only when logged in */}
+          {isLoaded && user && (
+            <>
+              <div className="mb-12">
+                <h2 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">
+                  Featured Hotels
+                </h2>
+                <p className="text-gray-600 dark:text-gray-400 text-lg">
+                  Discover our premium selection of hotels
+                </p>
+              </div>
+
+              {loading ? (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                  {[1, 2, 3].map((i) => (
+                    <div
+                      key={i}
+                      className="h-80 bg-gray-200 dark:bg-slate-800 rounded-2xl animate-pulse"
+                    />
+                  ))}
+                </div>
+              ) : hotels.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                  {hotels.map((hotel) => (
+                    <HotelCard key={hotel.id} hotel={hotel} />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <p className="text-gray-600 dark:text-gray-400 text-lg">
+                    No hotels available yet. Check back soon!
+                  </p>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Show only when NOT logged in */}
+          {isLoaded && !user && !loading && hotels.length > 0 && (
+            <div className="text-center py-12">
+              <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
+                Browse Our Hotels
+              </h2>
+              <p className="text-gray-600 dark:text-gray-400 text-lg mb-8">
+                Sign in to see more details and book your perfect stay
               </p>
+              <Button
+                onClick={() => router.push("/sign-in")}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 text-lg"
+              >
+                Sign In to Explore More
+              </Button>
             </div>
-            <div className="text-center">
-              <div className="text-5xl mb-4">💰</div>
-              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
-                Best Prices
-              </h3>
-              <p className="text-gray-600 dark:text-gray-400">
-                Competitive prices with transparent booking process
-              </p>
-            </div>
-            <div className="text-center">
-              <div className="text-5xl mb-4">✨</div>
-              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
-                Easy Booking
-              </h3>
-              <p className="text-gray-600 dark:text-gray-400">
-                Simple and secure booking experience
-              </p>
-            </div>
-          </div>
+          )}
         </Container>
       </section>
 
+
+
       {/* Hotels Stats */}
-      <section className="py-16 bg-linear-to-r from-blue-600 to-indigo-600 dark:from-blue-700 dark:to-indigo-700">
+      <section className="py-16 bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-700 dark:to-indigo-700">
         <Container>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center text-white">
             <div>
-              <div className="text-4xl font-bold mb-2">8+</div>
+              <div className="text-4xl font-bold mb-2">{hotels.length}+</div>
               <p className="text-blue-100">Premium Hotels</p>
             </div>
             <div>

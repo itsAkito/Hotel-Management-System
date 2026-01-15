@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ hotelId: string; roomId: string }> }
+  { params }: { params: { hotelId: string; roomId: string } }
 ) {
   try {
     const { userId } = await auth();
@@ -13,13 +13,8 @@ export async function GET(
     }
 
     const prismadb = (await import('@/lib/prismadb')).default;
-    const { hotelId: hotelIdStr, roomId: roomIdStr } = await params;
-    const hotelId = parseInt(hotelIdStr, 10);
-    const roomId = parseInt(roomIdStr, 10);
-
-    if (isNaN(hotelId) || isNaN(roomId)) {
-      return NextResponse.json({ error: 'Invalid hotel or room ID' }, { status: 400 });
-    }
+    const hotelId = parseInt(params.hotelId);
+    const roomId = parseInt(params.roomId);
 
     // Verify hotel ownership
     const hotel = await prismadb.hotel.findUnique({
@@ -41,14 +36,13 @@ export async function GET(
     return NextResponse.json(room);
   } catch (error) {
     console.error('Error fetching room:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
-    return NextResponse.json({ error: errorMessage }, { status: 500 });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: Promise<{ hotelId: string; roomId: string }> }
+  { params }: { params: { hotelId: string; roomId: string } }
 ) {
   try {
     const { userId } = await auth();
@@ -59,13 +53,8 @@ export async function PUT(
 
     const body = await request.json();
     const prismadb = (await import('@/lib/prismadb')).default;
-    const { hotelId: hotelIdStr, roomId: roomIdStr } = await params;
-    const hotelId = parseInt(hotelIdStr, 10);
-    const roomId = parseInt(roomIdStr, 10);
-
-    if (isNaN(hotelId) || isNaN(roomId)) {
-      return NextResponse.json({ error: 'Invalid hotel or room ID' }, { status: 400 });
-    }
+    const hotelId = parseInt(params.hotelId);
+    const roomId = parseInt(params.roomId);
 
     // Verify hotel ownership
     const hotel = await prismadb.hotel.findUnique({
@@ -92,14 +81,13 @@ export async function PUT(
     return NextResponse.json(updatedRoom);
   } catch (error) {
     console.error('Error updating room:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
-    return NextResponse.json({ error: errorMessage }, { status: 500 });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ hotelId: string; roomId: string }> }
+  { params }: { params: { hotelId: string; roomId: string } }
 ) {
   try {
     const { userId } = await auth();
@@ -109,13 +97,8 @@ export async function DELETE(
     }
 
     const prismadb = (await import('@/lib/prismadb')).default;
-    const { hotelId: hotelIdStr, roomId: roomIdStr } = await params;
-    const hotelId = parseInt(hotelIdStr, 10);
-    const roomId = parseInt(roomIdStr, 10);
-
-    if (isNaN(hotelId) || isNaN(roomId)) {
-      return NextResponse.json({ error: 'Invalid hotel or room ID' }, { status: 400 });
-    }
+    const hotelId = parseInt(params.hotelId);
+    const roomId = parseInt(params.roomId);
 
     // Verify hotel ownership
     const hotel = await prismadb.hotel.findUnique({
@@ -141,7 +124,6 @@ export async function DELETE(
     return NextResponse.json({ message: 'Room deleted' });
   } catch (error) {
     console.error('Error deleting room:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
-    return NextResponse.json({ error: errorMessage }, { status: 500 });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

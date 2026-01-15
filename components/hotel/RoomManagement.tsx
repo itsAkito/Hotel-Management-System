@@ -30,11 +30,11 @@ interface RoomManagementProps {
 const roomSchema = z.object({
   title: z.string().min(2, "Room title is required"),
   description: z.string().optional(),
-  bedCount: z.number().int().min(1, "Must have at least 1 bed"),
-  guestCount: z.number().int().min(1, "Must accommodate at least 1 guest"),
-  bathroomCount: z.number().int().min(1, "Must have at least 1 bathroom"),
-  kingBed: z.number().int().min(0).default(0),
-  queenBed: z.number().int().min(0).default(0),
+  bedCount: z.number().min(1, "Must have at least 1 bed"),
+  guestCount: z.number().min(1, "Must accommodate at least 1 guest"),
+  bathroomCount: z.number().min(1, "Must have at least 1 bathroom"),
+  kingBed: z.number().min(0).default(0),
+  queenBed: z.number().min(0).default(0),
   roomPrice: z.number().min(1, "Room price is required"),
   breakfastPrice: z.number().min(0).default(0),
   roomService: z.boolean().default(false),
@@ -47,29 +47,9 @@ const roomSchema = z.object({
   airCondition: z.boolean().default(false),
   soundProofed: z.boolean().default(false),
   available: z.boolean().default(true),
-}).strict();
+});
 
-type RoomFormData = {
-  title: string;
-  description?: string;
-  bedCount: number;
-  guestCount: number;
-  bathroomCount: number;
-  kingBed?: number;
-  queenBed?: number;
-  roomPrice: number;
-  breakfastPrice?: number;
-  roomService?: boolean;
-  TV?: boolean;
-  balcony?: boolean;
-  freeWifi?: boolean;
-  oceanView?: boolean;
-  forestView?: boolean;
-  mountainView?: boolean;
-  airCondition?: boolean;
-  soundProofed?: boolean;
-  available?: boolean;
-};
+type RoomFormData = z.infer<typeof roomSchema>;
 
 export default function RoomManagement({ hotelId, rooms, onRoomsChange }: RoomManagementProps) {
   const [showForm, setShowForm] = useState(false);
@@ -103,12 +83,10 @@ export default function RoomManagement({ hotelId, rooms, onRoomsChange }: RoomMa
   const onSubmit = async (data: RoomFormData) => {
     try {
       const endpoint = editingRoom 
-        ? `/api/hotels/${hotelId}/rooms/${editingRoom.id}`
-        : `/api/hotels/${hotelId}/rooms`;
+        ? `/api/hotel/${hotelId}/rooms/${editingRoom.id}`
+        : `/api/hotel/${hotelId}/rooms`;
       
       const method = editingRoom ? 'PUT' : 'POST';
-      
-      console.log(`[RoomManagement] ${method} request to: ${endpoint}`, data);
       
       const response = await fetch(endpoint, {
         method,
@@ -116,11 +94,8 @@ export default function RoomManagement({ hotelId, rooms, onRoomsChange }: RoomMa
         body: JSON.stringify(data),
       });
 
-      console.log(`[RoomManagement] Response status: ${response.status} ${response.statusText}`);
-
       if (response.ok) {
         const result = await response.json();
-        console.log('Room saved successfully:', result);
         
         if (editingRoom) {
           setRoomsList(roomsList.map(r => r.id === editingRoom.id ? result : r));
@@ -132,28 +107,13 @@ export default function RoomManagement({ hotelId, rooms, onRoomsChange }: RoomMa
         setShowForm(false);
         setEditingRoom(null);
         onRoomsChange?.(editingRoom ? roomsList.map(r => r.id === editingRoom.id ? result : r) : [...roomsList, result]);
-        alert(editingRoom ? 'Room updated successfully!' : 'Room created successfully!');
+        alert(editingRoom ? 'Room updated!' : 'Room created!');
       } else {
-        let errorMessage = 'Failed to save room';
-        
-        try {
-          const errorData = await response.json();
-          errorMessage = errorData?.error || errorData?.message || 'Failed to save room';
-          console.error('[RoomManagement] API error response:', { status: response.status, statusText: response.statusText, errorData });
-        } catch (parseError) {
-          console.error('[RoomManagement] Could not parse error response:', parseError);
-          const responseText = await response.text();
-          console.error('[RoomManagement] Response text:', responseText);
-          errorMessage = `${response.status} ${response.statusText}: ${responseText || 'No error details'}`;
-        }
-        
-        console.error('[RoomManagement] Request payload:', data);
-        alert(`Failed to save room:\n${errorMessage}`);
+        alert('Failed to save room');
       }
     } catch (error) {
-      console.error('[RoomManagement] Exception:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Error saving room';
-      alert(`Error: ${errorMessage}`);
+      console.error('Error saving room:', error);
+      alert('Error saving room');
     }
   };
 
@@ -161,7 +121,7 @@ export default function RoomManagement({ hotelId, rooms, onRoomsChange }: RoomMa
     if (!confirm('Are you sure you want to delete this room?')) return;
 
     try {
-      const response = await fetch(`/api/hotels/${hotelId}/rooms/${roomId}`, {
+      const response = await fetch(`/api/hotel/${hotelId}/rooms/${roomId}`, {
         method: 'DELETE',
       });
 
@@ -171,24 +131,11 @@ export default function RoomManagement({ hotelId, rooms, onRoomsChange }: RoomMa
         onRoomsChange?.(updatedRooms);
         alert('Room deleted!');
       } else {
-        let errorMessage = 'Failed to delete room';
-        
-        try {
-          const errorData = await response.json();
-          errorMessage = errorData?.error || errorData?.message || 'Failed to delete room';
-          console.error('[RoomManagement] Delete error:', { status: response.status, errorData });
-        } catch (parseError) {
-          const responseText = await response.text();
-          errorMessage = `${response.status}: ${responseText || 'No error details'}`;
-          console.error('[RoomManagement] Delete parse error:', parseError);
-        }
-        
-        alert(`Failed to delete room: ${errorMessage}`);
+        alert('Failed to delete room');
       }
     } catch (error) {
-      console.error('[RoomManagement] Delete exception:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Error deleting room';
-      alert(`Error: ${errorMessage}`);
+      console.error('Error deleting room:', error);
+      alert('Error deleting room');
     }
   };
 
@@ -237,8 +184,8 @@ export default function RoomManagement({ hotelId, rooms, onRoomsChange }: RoomMa
 
       {/* Room Form */}
       {showForm && (
-        <Card className="p-6 bg-linear-to-br from-slate-800 to-gray-700 dark-from-slate-900 dark:to-slate-800 border-slate-600">
-          <Form {...form}> 
+        <Card className="p-6">
+          <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <h3 className="text-xl font-semibold">{editingRoom ? 'Edit Room' : 'Add New Room'}</h3>
 
@@ -267,11 +214,8 @@ export default function RoomManagement({ hotelId, rooms, onRoomsChange }: RoomMa
                         <Input 
                           type="number" 
                           placeholder="150" 
-                          value={field.value === undefined || field.value === null ? '' : String(field.value)}
-                          onChange={(e) => {
-                            const value = e.target.value === '' ? 0 : parseFloat(e.target.value);
-                            field.onChange(isNaN(value) ? 0 : value);
-                          }}
+                          {...field}
+                          onChange={(e) => field.onChange(parseInt(e.target.value))}
                         />
                       </FormControl>
                       <FormMessage />
@@ -304,11 +248,8 @@ export default function RoomManagement({ hotelId, rooms, onRoomsChange }: RoomMa
                       <FormControl>
                         <Input 
                           type="number" 
-                          value={field.value === undefined || field.value === null ? '' : String(field.value)}
-                          onChange={(e) => {
-                            const value = e.target.value === '' ? 0 : parseInt(e.target.value, 10);
-                            field.onChange(isNaN(value) ? 0 : value);
-                          }}
+                          {...field}
+                          onChange={(e) => field.onChange(parseInt(e.target.value))}
                         />
                       </FormControl>
                       <FormMessage />
@@ -325,11 +266,8 @@ export default function RoomManagement({ hotelId, rooms, onRoomsChange }: RoomMa
                       <FormControl>
                         <Input 
                           type="number" 
-                          value={field.value === undefined || field.value === null ? '' : String(field.value)}
-                          onChange={(e) => {
-                            const value = e.target.value === '' ? 0 : parseInt(e.target.value, 10);
-                            field.onChange(isNaN(value) ? 0 : value);
-                          }}
+                          {...field}
+                          onChange={(e) => field.onChange(parseInt(e.target.value))}
                         />
                       </FormControl>
                       <FormMessage />
@@ -346,11 +284,8 @@ export default function RoomManagement({ hotelId, rooms, onRoomsChange }: RoomMa
                       <FormControl>
                         <Input 
                           type="number" 
-                          value={field.value === undefined || field.value === null ? '' : String(field.value)}
-                          onChange={(e) => {
-                            const value = e.target.value === '' ? 0 : parseInt(e.target.value, 10);
-                            field.onChange(isNaN(value) ? 0 : value);
-                          }}
+                          {...field}
+                          onChange={(e) => field.onChange(parseInt(e.target.value))}
                         />
                       </FormControl>
                       <FormMessage />
@@ -367,11 +302,8 @@ export default function RoomManagement({ hotelId, rooms, onRoomsChange }: RoomMa
                       <FormControl>
                         <Input 
                           type="number" 
-                          value={field.value === undefined || field.value === null ? '' : String(field.value)}
-                          onChange={(e) => {
-                            const value = e.target.value === '' ? 0 : parseInt(e.target.value, 10);
-                            field.onChange(isNaN(value) ? 0 : value);
-                          }}
+                          {...field}
+                          onChange={(e) => field.onChange(parseInt(e.target.value))}
                         />
                       </FormControl>
                       <FormMessage />
@@ -390,11 +322,8 @@ export default function RoomManagement({ hotelId, rooms, onRoomsChange }: RoomMa
                       <FormControl>
                         <Input 
                           type="number" 
-                          value={field.value === undefined || field.value === null ? '' : String(field.value)}
-                          onChange={(e) => {
-                            const value = e.target.value === '' ? 0 : parseInt(e.target.value, 10);
-                            field.onChange(isNaN(value) ? 0 : value);
-                          }}
+                          {...field}
+                          onChange={(e) => field.onChange(parseInt(e.target.value))}
                         />
                       </FormControl>
                       <FormMessage />
@@ -412,11 +341,8 @@ export default function RoomManagement({ hotelId, rooms, onRoomsChange }: RoomMa
                         <Input 
                           type="number" 
                           placeholder="0" 
-                          value={field.value === undefined || field.value === null ? '' : String(field.value)}
-                          onChange={(e) => {
-                            const value = e.target.value === '' ? 0 : parseFloat(e.target.value);
-                            field.onChange(isNaN(value) ? 0 : value);
-                          }}
+                          {...field}
+                          onChange={(e) => field.onChange(parseInt(e.target.value))}
                         />
                       </FormControl>
                       <FormMessage />
@@ -435,7 +361,7 @@ export default function RoomManagement({ hotelId, rooms, onRoomsChange }: RoomMa
                           onCheckedChange={field.onChange}
                         />
                       </FormControl>
-                      <FormLabel className="mt-0!">Available</FormLabel>
+                      <FormLabel className="!mt-0">Available</FormLabel>
                     </FormItem>
                   )}
                 />
@@ -457,7 +383,7 @@ export default function RoomManagement({ hotelId, rooms, onRoomsChange }: RoomMa
                               onCheckedChange={field.onChange}
                             />
                           </FormControl>
-                          <FormLabel className="capitalize text-sm mt-0!">
+                          <FormLabel className="capitalize text-sm !mt-0">
                             {amenity.replace(/([A-Z])/g, ' $1').trim()}
                           </FormLabel>
                         </FormItem>
@@ -484,7 +410,7 @@ export default function RoomManagement({ hotelId, rooms, onRoomsChange }: RoomMa
           </Card>
         ) : (
           roomsList.map((room) => (
-            <Card key={room.id} className="p-4 bg-linear-to-br from-slate-600 to-white dark:from-slate-800 dark:to-slate-900 border-slate-600 ">
+            <Card key={room.id} className="p-4">
               <div className="flex justify-between items-start">
                 <div className="flex-1">
                   <h3 className="text-lg font-semibold">{room.title}</h3>

@@ -1,13 +1,22 @@
-// generator client {
-//   provider = "prisma-client-js"
-//   output   = "../app/generated/prisma"
-// }
+generator client {
+  provider = "prisma-client-js"
+  output   = "../app/generated/prisma"
+}
 
-// datasource db {
-//   provider     = "postgresql"
-//   url          = env("DATABASE_URL")
-//   relationMode = "prisma"
-// }
+datasource db {
+  provider     = "postgresql"
+  url          = env("DATABASE_URL")
+  relationMode = "prisma"
+}
+
+// User model for role-based access control
+model User {
+  id           String    @id // Clerk user ID
+  email        String    @unique
+  role         String    @default("user") // "user" or "admin"
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
 
 // model Hotel {
 //   id                  Int     @id @default(autoincrement())
@@ -101,15 +110,6 @@
 //   @@index([roomId])
 // }
 
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-}
-
-generator client {
-  provider = "prisma-client-js"
-}
-
 model Hotel {
   id                  Int     @id @default(autoincrement())
   userId              String  // Clerk user ID
@@ -137,8 +137,11 @@ model Hotel {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  rooms    Room[]
-  bookings Booking[]
+  rooms         Room[]
+  bookings      Booking[]
+  invoices      Invoice[]
+  serviceRequests ServiceRequest[]
+  hotelInvoices HotelInvoices[]
 }
 
 model Room {
@@ -195,8 +198,157 @@ model Booking {
   room    Room?  @relation(fields: [roomId], references: [id])
   roomId  Int?
 
+  // New relations
+  checkIn_checkout CheckInCheckOut?
+  roomAssignment   RoomAssignment?
+  guestProfile     GuestProfile?
+  invoices         Invoice[]
+  serviceRequests  ServiceRequest[]
+
   @@index([hotelId])
   @@index([roomId])
 }
 
+model GuestProfile {
+  id              String   @id @default(uuid())
+  bookingId       String   @unique
+  booking         Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  
+  guestFirstName  String
+  guestLastName   String
+  guestEmail      String
+  guestPhone      String
+  guestAddress    String?
+  guestCity       String?
+  guestState      String?
+  guestZip        String?
+  guestCountry    String?
+  
+  numberOfGuests  Int
+  specialRequests String?
+  idType          String? // Passport, Driver License, etc.
+  idNumber        String?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
+  @@index([bookingId])
+}
+
+model CheckInCheckOut {
+  id              String   @id @default(uuid())
+  bookingId       String   @unique
+  booking         Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  
+  checkInTime     DateTime?
+  checkOutTime    DateTime?
+  checkInBy       String? // Staff ID
+  checkOutBy      String? // Staff ID
+  
+  keyIssued       Boolean  @default(false)
+  keyReturned     Boolean  @default(false)
+  
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([bookingId])
+}
+
+model RoomAssignment {
+  id              String   @id @default(uuid())
+  bookingId       String   @unique
+  booking         Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  
+  roomNumber      String
+  floorNumber     Int?
+  assignmentDate  DateTime @default(now())
+  assignedBy      String
+  
+  maintenanceNeeded Boolean @default(false)
+  maintenanceNotes  String?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([bookingId])
+}
+
+model Invoice {
+  id              String   @id @default(uuid())
+  bookingId       String
+  booking         Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  hotelId         Int
+  hotel           Hotel    @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+  
+  invoiceNumber   String   @unique
+  invoiceDate     DateTime @default(now())
+  dueDate         DateTime?
+  
+  roomCharges     Int      @default(0)
+  breakfastCharges Int     @default(0)
+  serviceCharges  Int      @default(0)
+  taxAmount       Int      @default(0)
+  discountAmount  Int      @default(0)
+  totalAmount     Int      @default(0)
+  
+  paymentMethod   String?
+  paymentDate     DateTime?
+  paidAmount      Int      @default(0)
+  balanceDue      Int      @default(0)
+  
+  status          String   @default("pending") // pending, partial, paid
+  notes           String?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([bookingId])
+  @@index([hotelId])
+}
+
+model ServiceRequest {
+  id              String   @id @default(uuid())
+  bookingId       String
+  booking         Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  hotelId         Int
+  hotel           Hotel    @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+  
+  serviceType     String   // room-service, maintenance, housekeeping, etc.
+  description     String
+  priority        String   @default("normal") // low, normal, high, urgent
+  
+  requestedAt     DateTime @default(now())
+  completedAt     DateTime?
+  assignedTo      String?  // Staff ID
+  
+  status          String   @default("pending") // pending, in-progress, completed, cancelled
+  resolution      String?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([bookingId])
+  @@index([hotelId])
+}
+
+model HotelInvoices {
+  id              String   @id @default(uuid())
+  hotelId         Int
+  hotel           Hotel    @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+  
+  invoiceNumber   String   @unique
+  invoiceDate     DateTime @default(now())
+  dueDate         DateTime?
+  
+  totalAmount     Int
+  paidAmount      Int      @default(0)
+  balanceDue      Int
+  
+  status          String   @default("pending")
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([hotelId])
+}

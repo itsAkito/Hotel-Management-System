@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useUser } from "@clerk/nextjs";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import Container from "@/components/Container";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -11,7 +11,6 @@ import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { Calendar, MapPin, Users, Hotel, Search, Wifi, Utensils, Waves, Check } from "lucide-react";
 import Image from "next/image";
 import { DateRange } from "react-day-picker";
-import { calculateNights } from "@/lib/dateUtils";
 
 interface Room {
   id: number;
@@ -42,8 +41,6 @@ interface Hotel {
 export default function BookStayPage() {
   const { user, isLoaded } = useUser();
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const preselectedHotelId = searchParams.get("hotelId");
   const [hotels, setHotels] = useState<Hotel[]>([]);
   const [filteredHotels, setFilteredHotels] = useState<Hotel[]>([]);
   const [loading, setLoading] = useState(true);
@@ -76,17 +73,7 @@ export default function BookStayPage() {
       if (response.ok) {
         const data = await response.json();
         setHotels(data);
-
-        // If the user navigated from a featured card, preselect & focus that hotel
-        if (preselectedHotelId) {
-          const wantedId = Number.parseInt(preselectedHotelId, 10);
-          const matchedHotel = data.find((h: Hotel) => h.id === wantedId) || null;
-          setSelectedHotel(matchedHotel);
-          setSelectedRoom(null);
-          setFilteredHotels(matchedHotel ? [matchedHotel] : data);
-        } else {
-          setFilteredHotels(data);
-        }
+        setFilteredHotels(data);
       }
     } catch (error) {
       console.error("Error fetching hotels:", error);
@@ -170,7 +157,7 @@ export default function BookStayPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-800 dark:bg-slate-950 transition-colors">
+    <div className="min-h-screen bg-white dark:bg-slate-950 transition-colors">
       <Container>
         {/* Header */}
         <div className="py-8 border-b border-gray-200 dark:border-slate-800">
@@ -218,26 +205,16 @@ export default function BookStayPage() {
             </div>
 
             {/* Check-in/Check-out Dates */}
-            <div className="space-y-2 group ">
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2 transition-colors group-focus-within:text-blue-700">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
                 <Calendar className="h-4 w-4" />
-
-                Stay Duration
+                Dates
               </label>
-              <div className="relative transition-all duration-200 hover:drop-shadow-bold rounded-lg ">
-                <DateRangePicker
-                  dateRange={dateRange}
-                  onDateRangeChange={handleDateRangeChange}
-                  placeholder="Select Your Dates"
-                  className="w-full border-gray-200 dark:border-slate-800 focus:ring-2 focus:ring-blue-500/20"
-                />
-              </div>
-             {dateRange?.from && dateRange.to &&(
-                <p className="text-gray-400 animate-in fade-in slide-in-from-top-1">
-                  Total:{calculateNights(dateRange.from ,dateRange.to)
-                }nights
-                </p>
-              )}
+              <DateRangePicker
+                dateRange={dateRange}
+                onDateRangeChange={handleDateRangeChange}
+                placeholder="Check-in to Check-out"
+              />
             </div>
 
             {/* Number of Guests */}
@@ -288,10 +265,10 @@ export default function BookStayPage() {
           <div className="grid grid-cols-1 gap-6">
             {filteredHotels.map((hotel) => (
               <Card key={hotel.id} className="overflow-hidden hover:shadow-lg transition-shadow">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 p-6 bg-slate-800 dark:bg-slate-900 ">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 p-6">
                   {/* Hotel Image */}
                   <div className="md:col-span-1">
-                    <div className="relative h-58 md:h-64 w-full rounded-lg overflow-hidden bg-gray-200 dark:bg-slate-700">
+                    <div className="relative h-48 md:h-64 w-full rounded-lg overflow-hidden bg-gray-200 dark:bg-slate-700">
                       {hotel.image ? (
                         <Image
                           src={hotel.image}
@@ -380,7 +357,7 @@ export default function BookStayPage() {
                               <Button
                                 onClick={() => handleBookRoom(hotel, room)}
                                 disabled={!checkInDate || !checkOutDate}
-                                className="w-full bg-emerald-600 hover:bg-emerald-700 text-slate-700 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white disabled:bg-gray-300 disabled:cursor-not-allowed"
                               >
                                 <Check className="h-4 w-4 mr-2" />
                                 Book Room

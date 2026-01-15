@@ -160,7 +160,7 @@ export default function BookingConfirmationPage() {
           {/* Booking Details */}
           <div className="lg:col-span-2 space-y-6">
             {/* Hotel Info */}
-            <Card className="p-6 bg-linear-to-br from-blue-50 to-emerald-50 dark:from-slate-900 dark:to-slate-800 border-2 border-blue-200 dark:border-blue-900">
+            <Card className="p-6">
               <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
                 Hotel Details
               </h2>
@@ -181,7 +181,7 @@ export default function BookingConfirmationPage() {
             </Card>
 
             {/* Stay Details */}
-            <Card className="p-6 bg-linear-to-br from-blue-50 to-emerald-50 dark:from-slate-900 dark:to-slate-800 border-2 border-blue-200 dark:border-blue-900">
+            <Card className="p-6">
               <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
                 Stay Details
               </h2>
@@ -233,7 +233,7 @@ export default function BookingConfirmationPage() {
             </Card>
 
             {/* Guest Info */}
-            <Card className="p-6 bg-linear-to-br from-blue-50 to-emerald-50 dark:from-slate-900 dark:to-slate-800 border-2 border-blue-200 dark:border-blue-900">
+            <Card className="p-6">
               <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
                 Guest Information
               </h2>

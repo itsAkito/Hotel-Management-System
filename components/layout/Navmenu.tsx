@@ -62,14 +62,12 @@ export function NavMenu() {
         <DropdownMenuLabel className="font-bold text-gray-700 dark:text-gray-200">Account</DropdownMenuLabel>
         <DropdownMenuSeparator />
         
-        <DropdownMenuItem asChild className="cursor-pointer text-red-600 dark:text-red-400 py-2 pl-8">
-          <SignOutButton>
-            <div className="flex items-center gap-2 cursor-pointer">
-              <LogOut size={16} className="h-4 w-4" />
-              <span className="font-medium">Sign Out</span>
-            </div>
-          </SignOutButton>
-        </DropdownMenuItem>
+        <SignOutButton redirectUrl="/">
+          <DropdownMenuItem className="cursor-pointer text-red-600 dark:text-red-400 py-2 pl-8">
+            <LogOut size={16} className="mr-3 h-4 w-4" />
+            <span className="font-medium">Sign Out</span>
+          </DropdownMenuItem>
+        </SignOutButton>
       </DropdownMenuContent>
     </DropdownMenu>
   );

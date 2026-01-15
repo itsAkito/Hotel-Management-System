@@ -161,7 +161,7 @@ export default function MyHotelsPage() {
 
         {/* Search and Sort Bar */}
         {!loading && hotels.length > 0 && (
-          <Card className="mb-8 p-6 space-y-4 bg-gradient-to-bl from-blue dark:to-slate-700 border-slate-200 dark:border-slate-800">
+          <Card className="mb-8 p-6 space-y-4 border-slate-200 dark:border-slate-800">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* Search */}
               <div className="space-y-2">
@@ -244,8 +244,8 @@ export default function MyHotelsPage() {
             {filteredHotels.map((hotel) => (
               <Card
                 key={hotel.id}
-                className="overflow-hidden hover:shadow-2xl transition-all duration-300 bg-gradient-to-bl from-white dark:to-slate-800 border-slate-500 dark:border-slate-800 flex flex-col"
-              > 
+                className="overflow-hidden hover:shadow-2xl transition-all duration-300 border-slate-200 dark:border-slate-800 flex flex-col"
+              >
                 {/* Hotel Image */}
                 <div className="relative h-56 w-full bg-slate-200 dark:bg-slate-800 overflow-hidden group">
                   {hotel.image && hotel.image.startsWith("http") ? (

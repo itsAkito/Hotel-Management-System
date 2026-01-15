@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ hotelId: string }> }
+  { params }: { params: { hotelId: string } }
 ) {
   try {
     const { userId } = await auth();
@@ -14,12 +14,7 @@ export async function POST(
 
     const body = await request.json();
     const prismadb = (await import('@/lib/prismadb')).default;
-    const { hotelId: hotelIdStr } = await params;
-    const hotelId = parseInt(hotelIdStr, 10);
-
-    if (isNaN(hotelId)) {
-      return NextResponse.json({ error: 'Invalid hotel ID' }, { status: 400 });
-    }
+    const hotelId = parseInt(params.hotelId);
 
     // Verify hotel ownership
     const hotel = await prismadb.hotel.findUnique({
@@ -40,14 +35,13 @@ export async function POST(
     return NextResponse.json(room, { status: 201 });
   } catch (error) {
     console.error('Error creating room:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
-    return NextResponse.json({ error: errorMessage }, { status: 500 });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ hotelId: string }> }
+  { params }: { params: { hotelId: string } }
 ) {
   try {
     const { userId } = await auth();
@@ -57,12 +51,7 @@ export async function GET(
     }
 
     const prismadb = (await import('@/lib/prismadb')).default;
-    const { hotelId: hotelIdStr } = await params;
-    const hotelId = parseInt(hotelIdStr, 10);
-
-    if (isNaN(hotelId)) {
-      return NextResponse.json({ error: 'Invalid hotel ID' }, { status: 400 });
-    }
+    const hotelId = parseInt(params.hotelId);
 
     // Verify hotel ownership
     const hotel = await prismadb.hotel.findUnique({
@@ -80,7 +69,6 @@ export async function GET(
     return NextResponse.json(rooms);
   } catch (error) {
     console.error('Error fetching rooms:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
-    return NextResponse.json({ error: errorMessage }, { status: 500 });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

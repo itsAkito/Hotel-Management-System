@@ -47,6 +47,7 @@ export default function MyBookingsPage() {
   const [filter, setFilter] = useState<"all" | "pending" | "confirmed" | "cancelled">("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<"date" | "price">("date");
+  const [category, setCategory] = useState<"all" | "pending" | "completed">("all");
   useEffect(() => {
     if (!isLoaded) return;
 
@@ -60,7 +61,7 @@ export default function MyBookingsPage() {
 
   useEffect(() => {
     filterAndSortBookings();
-  }, [bookings, filter, searchQuery, sortBy]);
+  }, [bookings, filter, searchQuery, sortBy, category]);
 
   const fetchBookings = async () => {
     try {
@@ -78,6 +79,13 @@ export default function MyBookingsPage() {
 
   const filterAndSortBookings = () => {
     let filtered = bookings.filter((booking) => {
+      // Filter by category (pending/completed)
+      if (category === "pending") {
+        if (booking.status !== "pending") return false;
+      } else if (category === "completed") {
+        if (booking.status !== "confirmed") return false;
+      }
+
       // Filter by status
       if (filter !== "all" && booking.status !== filter) {
         return false;
@@ -205,6 +213,44 @@ export default function MyBookingsPage() {
                 </div>
               </Card>
             ))}
+          </div>
+        )}
+
+        {/* Category Buttons */}
+        {!loading && bookings.length > 0 && (
+          <div className="mb-8 flex flex-wrap gap-3">
+            <button
+              onClick={() => setCategory("all")}
+              className={`px-6 py-2 rounded-lg font-semibold transition-all duration-200 flex items-center gap-2 ${
+                category === "all"
+                  ? "bg-blue-600 text-white shadow-md"
+                  : "bg-slate-200 dark:bg-slate-800 text-slate-900 dark:text-white hover:bg-slate-300 dark:hover:bg-slate-700"
+              }`}
+            >
+              📅 All Bookings
+            </button>
+            <button
+              onClick={() => setCategory("pending")}
+              className={`px-6 py-2 rounded-lg font-semibold transition-all duration-200 flex items-center gap-2 ${
+                category === "pending"
+                  ? "bg-yellow-600 text-white shadow-md"
+                  : "bg-slate-200 dark:bg-slate-800 text-slate-900 dark:text-white hover:bg-slate-300 dark:hover:bg-slate-700"
+              }`}
+            >
+              <Clock size={18} />
+              Pending
+            </button>
+            <button
+              onClick={() => setCategory("completed")}
+              className={`px-6 py-2 rounded-lg font-semibold transition-all duration-200 flex items-center gap-2 ${
+                category === "completed"
+                  ? "bg-green-600 text-white shadow-md"
+                  : "bg-slate-200 dark:bg-slate-800 text-slate-900 dark:text-white hover:bg-slate-300 dark:hover:bg-slate-700"
+              }`}
+            >
+              <CheckCircle2 size={18} />
+              Completed
+            </button>
           </div>
         )}
 

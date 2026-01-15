@@ -1,13 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import prismadb from '@/lib/prismadb';
-import crypto from 'crypto';
+import Stripe from 'stripe';
 
-const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET || '';
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
+  apiVersion: '2024-11-20',
+});
+
+const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || '';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.text();
-    const signature = request.headers.get('x-razorpay-signature');
+    const signature = request.headers.get('stripe-signature');
 
     if (!signature || !webhookSecret) {
       return NextResponse.json(
@@ -16,118 +19,74 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verify Razorpay signature
-    const hash = crypto
-      .createHmac('sha256', webhookSecret)
-      .update(body)
-      .digest('hex');
+    let event: Stripe.Event;
 
-    if (hash !== signature) {
+    try {
+      event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
+    } catch (error: any) {
+      console.error('Webhook signature verification failed:', error.message);
       return NextResponse.json(
         { error: 'Invalid signature' },
         { status: 400 }
       );
     }
 
-    const event = JSON.parse(body);
+    const prismadb = (await import('@/lib/prismadb')).default;
 
-    // Handle different Razorpay event types
-    switch (event.event) {
-      case 'payment.authorized': {
-        const paymentData = event.payload.payment.entity;
+    // Handle different event types
+    switch (event.type) {
+      case 'payment_intent.succeeded': {
+        const paymentIntent = event.data.object as Stripe.PaymentIntent;
         
-        // Find booking by razorpay order ID
-        const booking = await prismadb.booking.findFirst({
-          where: {
-            paymentIntent: paymentData.order_id,
+        // Update booking status to confirmed
+        await prismadb.booking.update({
+          where: { paymentIntent: paymentIntent.id },
+          data: {
+            paymentStatus: true,
+            status: 'confirmed',
           },
         });
 
-        if (booking) {
-          await prismadb.booking.update({
-            where: { id: booking.id },
-            data: {
-              paymentStatus: true,
-              status: 'confirmed',
-              paymentIntent: paymentData.id,
-            },
-          });
-          console.log('Payment authorized:', paymentData.id);
-        }
+        console.log('Payment succeeded:', paymentIntent.id);
         break;
       }
 
-      case 'payment.failed': {
-        const paymentData = event.payload.payment.entity;
+      case 'payment_intent.payment_failed': {
+        const paymentIntent = event.data.object as Stripe.PaymentIntent;
         
-        // Find booking by razorpay order ID
-        const booking = await prismadb.booking.findFirst({
-          where: {
-            paymentIntent: paymentData.order_id,
+        // Update booking status to failed
+        await prismadb.booking.update({
+          where: { paymentIntent: paymentIntent.id },
+          data: {
+            paymentStatus: false,
+            status: 'failed',
           },
         });
 
-        if (booking) {
-          await prismadb.booking.update({
-            where: { id: booking.id },
-            data: {
-              paymentStatus: false,
-              status: 'failed',
-            },
-          });
-          console.log('Payment failed:', paymentData.id);
-        }
+        console.log('Payment failed:', paymentIntent.id);
         break;
       }
 
-      case 'payment.captured': {
-        const paymentData = event.payload.payment.entity;
+      case 'charge.refunded': {
+        const charge = event.data.object as Stripe.Charge;
         
-        // Find booking by razorpay payment ID
-        const booking = await prismadb.booking.findFirst({
-          where: {
-            paymentIntent: paymentData.id,
-          },
-        });
-
-        if (booking) {
+        if (charge.payment_intent) {
+          // Update booking status to cancelled
           await prismadb.booking.update({
-            where: { id: booking.id },
-            data: {
-              paymentStatus: true,
-              status: 'confirmed',
-            },
-          });
-          console.log('Payment captured:', paymentData.id);
-        }
-        break;
-      }
-
-      case 'refund.created': {
-        const refundData = event.payload.refund.entity;
-        
-        // Find booking by payment ID
-        const booking = await prismadb.booking.findFirst({
-          where: {
-            paymentIntent: refundData.payment_id,
-          },
-        });
-
-        if (booking) {
-          await prismadb.booking.update({
-            where: { id: booking.id },
+            where: { paymentIntent: charge.payment_intent.toString() },
             data: {
               paymentStatus: false,
               status: 'cancelled',
             },
           });
-          console.log('Booking refunded:', refundData.payment_id);
+
+          console.log('Booking refunded:', charge.payment_intent);
         }
         break;
       }
 
       default:
-        console.log(`Unhandled event type: ${event.event}`);
+        console.log(`Unhandled event type: ${event.type}`);
     }
 
     return NextResponse.json({ received: true });
